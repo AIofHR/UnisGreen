@@ -120,26 +120,95 @@ header{padding:12px 14px;flex-wrap:wrap;gap:8px}.brand h1{font-size:17px}.brand 
 <div id="modal" class="modal hidden"><div class="modal-box"><div id="modalContent"></div></div></div>
 <div id="toast" class="toast hidden"></div><div id="celebrate" class="celebrate"></div>
 
-<script>
-const KEY='unisgreen_ev_app_v1';
-const defaultData={
- vehicles:[
-  {id:'evo200',name:'Evo 200',price:22000000,color:['Trắng','Đen','Xanh'],image:''},
-  {id:'feliz2',name:'Feliz 2',price:29000000,color:['Trắng','Đen','Xanh lá'],image:''},
-  {id:'klara',name:'Klara S',price:36000000,color:['Trắng','Đỏ','Xanh'],image:''}
- ],
- accessories:[
-  {id:'helmet',name:'Mũ bảo hiểm Unis Green',price:500000},
-  {id:'box',name:'Thùng sau',price:900000},
-  {id:'mat',name:'Thảm lót sàn',price:350000},
-  {id:'lock',name:'Khóa chống trộm',price:700000}
- ],orders:[]
+<script type="module">
+// ===== FIREBASE SETUP =====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc,
+  onSnapshot, getDocs, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBhuM2Bgt2VKCpSFyaYpRPfDoCVjS64LK4",
+  authDomain: "unisgreen-fefb2.firebaseapp.com",
+  projectId: "unisgreen-fefb2",
+  storageBucket: "unisgreen-fefb2.firebasestorage.app",
+  messagingSenderId: "861273422384",
+  appId: "1:861273422384:web:fdebe6d76c68c39a4c8bf5"
 };
-let data=loadData(), editingId=null, editingType=null;
-function loadData(){try{return JSON.parse(localStorage.getItem(KEY))||defaultData}catch(e){return defaultData}}
-function saveData(){localStorage.setItem(KEY,JSON.stringify(data))}
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+const vehiclesCol = collection(db, 'vehicles');
+const accessoriesCol = collection(db, 'accessories');
+const ordersCol = collection(db, 'orders');
+const storeSettingsRef = doc(db, 'settings', 'store');
+
+// ===== APP DATA (mirror Firestore in memory) =====
+const defaultVehicles = [
+ {name:'Evo 200',price:22000000,color:['Trắng','Đen','Xanh'],image:''},
+ {name:'Feliz 2',price:29000000,color:['Trắng','Đen','Xanh lá'],image:''},
+ {name:'Klara S',price:36000000,color:['Trắng','Đỏ','Xanh'],image:''}
+];
+const defaultAccessories = [
+ {name:'Mũ bảo hiểm Unis Green',price:500000},
+ {name:'Thùng sau',price:900000},
+ {name:'Thảm lót sàn',price:350000},
+ {name:'Khóa chống trộm',price:700000}
+];
+
+let data = {vehicles:[], accessories:[], orders:[]};
+let storeName = 'UNIS GREEN';
+let editingId = null, editingType = null;
+let ready = {vehicles:false, accessories:false, orders:false};
+
+async function seedIfEmpty(){
+  const [vSnap, aSnap] = await Promise.all([getDocs(vehiclesCol), getDocs(accessoriesCol)]);
+  if(vSnap.empty){
+    for(const v of defaultVehicles) await addDoc(vehiclesCol, v);
+  }
+  if(aSnap.empty){
+    for(const a of defaultAccessories) await addDoc(accessoriesCol, a);
+  }
+}
+
+function refreshAll(){
+  const onManage = !document.getElementById('managePage').classList.contains('hidden');
+  const preserveVehicle = document.getElementById('vehicle')?.value;
+  initForm();
+  if(preserveVehicle && data.vehicles.some(v=>v.id===preserveVehicle)){
+    document.getElementById('vehicle').value = preserveVehicle;
+    updatePreview();
+  }
+  updateCount();
+  if(onManage) checkAdmin();
+}
+
+onSnapshot(vehiclesCol, snap=>{
+  data.vehicles = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  ready.vehicles = true;
+  refreshAll();
+});
+onSnapshot(accessoriesCol, snap=>{
+  data.accessories = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  ready.accessories = true;
+  refreshAll();
+});
+onSnapshot(ordersCol, snap=>{
+  data.orders = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  ready.orders = true;
+  refreshAll();
+});
+onSnapshot(storeSettingsRef, snap=>{
+  storeName = (snap.exists() && snap.data().name) || 'UNIS GREEN';
+  renderStoreName();
+});
+
+seedIfEmpty();
+
 function money(n){return new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(n||0)}
 function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+
 function showPage(page){
  document.getElementById('registerPage').classList.toggle('hidden',page!=='register');document.getElementById('managePage').classList.toggle('hidden',page!=='manage');
  document.getElementById('navRegister').classList.toggle('active',page==='register');document.getElementById('navManage').classList.toggle('active',page==='manage');
@@ -147,18 +216,16 @@ function showPage(page){
 }
 function updateCount(){document.getElementById('regCount').textContent=data.orders.length}
 
-const STORE_KEY='unisgreen_store_name';
-function getStoreName(){return localStorage.getItem(STORE_KEY)||'UNIS GREEN'}
 function renderStoreName(){
- const n=getStoreName();
- document.getElementById('storeNameHeader').textContent=n;
- const input=document.getElementById('storeNameInput'); if(input) input.value=n;
- document.title=n+' - Đăng ký mua xe điện';
+ document.getElementById('storeNameHeader').textContent=storeName;
+ const input=document.getElementById('storeNameInput'); if(input) input.value=storeName;
+ document.title=storeName+' - Đăng ký mua xe điện';
 }
-function saveStoreName(){
+async function saveStoreName(){
  const n=document.getElementById('storeNameInput').value.trim();
  if(!n){toast('Vui lòng nhập tên cửa hàng.');return}
- localStorage.setItem(STORE_KEY,n);renderStoreName();toast('Đã cập nhật tên cửa hàng.');
+ await setDoc(storeSettingsRef,{name:n},{merge:true});
+ toast('Đã cập nhật tên cửa hàng.');
 }
 
 function initForm(){
@@ -168,7 +235,7 @@ function initForm(){
 function renderAccessories(){document.getElementById('accessories').innerHTML=data.accessories.map(a=>`<label class="check"><input type="checkbox" value="${a.id}" onchange="updateTotal()"> ${esc(a.name)} (+${money(a.price)})</label>`).join('')}
 function updatePreview(){
  const v=data.vehicles.find(x=>x.id===document.getElementById('vehicle').value)||data.vehicles[0]; if(!v)return;
- document.getElementById('color').innerHTML=v.color.map(c=>`<option>${esc(c)}</option>`).join('');
+ document.getElementById('color').innerHTML=(v.color||[]).map(c=>`<option>${esc(c)}</option>`).join('');
  const img=v.image?`<img src="${v.image}" alt="${esc(v.name)}">`:`<div class="placeholder">🛵</div>`;
  document.getElementById('vehiclePreview').innerHTML=img+`<h3>${esc(v.name)}</h3><p>Giá niêm yết: <b>${money(v.price)}</b></p>`;
  updateTotal();
@@ -181,13 +248,16 @@ function updateTotal(){
  document.getElementById('selectedSummary').innerHTML=`<div><b>Đã chọn:</b> ${esc(v.name)} — ${esc(document.getElementById('color').value||'')} ${selected.length?' + '+selected.map(a=>esc(a.name)).join(', '):''}</div>`;
 }
 function resetForm(){document.getElementById('name').value='';document.getElementById('phone').value='';document.getElementById('receiveTime').value='';document.getElementById('note').value='';document.querySelectorAll('#accessories input').forEach(x=>x.checked=false);initForm()}
-function submitRegistration(){
+async function submitRegistration(){
  const name=document.getElementById('name').value.trim(),phone=document.getElementById('phone').value.trim(),vid=document.getElementById('vehicle').value,receiveTime=document.getElementById('receiveTime').value;
  if(!name||!phone||!vid||!receiveTime){toast('Vui lòng nhập đầy đủ họ tên, số điện thoại, loại xe và thời gian muốn nhận xe.');return}
  const v=data.vehicles.find(x=>x.id===vid), acc=[...document.querySelectorAll('#accessories input:checked')].map(i=>data.accessories.find(a=>a.id===i.value)).filter(Boolean);
  const total=v.price+acc.reduce((s,a)=>s+a.price,0);
- data.orders.push({id:Date.now(),date:new Date().toISOString(),name,phone,vehicleId:v.id,vehicle:v.name,color:document.getElementById('color').value,accessories:acc.map(a=>({id:a.id,name:a.name,price:a.price})),payment:document.getElementById('payment').value,receiveTime,note:document.getElementById('note').value,total});
- saveData();updateCount();celebrate();toast('Cảm ơn bạn đã lựa chọn Unis Green!');resetForm();
+ const order={date:new Date().toISOString(),name,phone,vehicleId:v.id,vehicle:v.name,color:document.getElementById('color').value,accessories:acc.map(a=>({id:a.id,name:a.name,price:a.price})),payment:document.getElementById('payment').value,receiveTime,note:document.getElementById('note').value,total};
+ try{
+   await addDoc(ordersCol, order);
+   celebrate();toast('Cảm ơn bạn đã lựa chọn Unis Green!');resetForm();
+ }catch(e){toast('Có lỗi khi gửi đăng ký, vui lòng thử lại.');console.error(e);}
 }
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),3500)}
 function celebrate(){const box=document.getElementById('celebrate');box.innerHTML='';for(let i=0;i<35;i++){let f=document.createElement('span');f.className='flower';f.textContent=['🌸','🌼','🌺','💮','✨'][Math.floor(Math.random()*5)];f.style.left=Math.random()*100+'%';f.style.animationDelay=Math.random()*1.2+'s';box.appendChild(f)}setTimeout(()=>box.innerHTML='',4000)}
@@ -243,18 +313,6 @@ function renderDashboard(){
  renderManage();renderOrders(orders);
 }
 
-d></tr>';
-
- const as={};
- orders.forEach(o=>o.accessories.forEach(a=>{
-   if(!as[a.id])as[a.id]={name:a.name,count:0,total:0,names:[]};
-   as[a.id].count++;as[a.id].total+=a.price;as[a.id].names.push(o.name)
- }));
- document.getElementById('accessoryStats').innerHTML=Object.values(as).map(a=>`<tr><td>${esc(a.name)}</td><td>${a.count}</td><td>${money(a.total)}</td><td class="note">${a.names.map(esc).join(', ')}</td></tr>`).join('')||'<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
-
- renderManage();renderOrders(orders);
-}
-
 function renderPie(byV){
  const entries=Object.entries(byV),total=entries.reduce((s,[,n])=>s+n,0),colors=['#0879c9','#00a7e8','#17a673','#f5a623','#8e63ce','#e74c3c','#16a085'];let start=0,parts=[];
  entries.forEach(([name,n],i)=>{const end=start+n/total*360;parts.push(`${colors[i%colors.length]} ${start}deg ${end}deg`);start=end});
@@ -289,19 +347,22 @@ function renderOrders(orders){
  <td>${o.payment==='installment'?'Trả góp':'Thanh toán hết'}</td>
  <td>${o.receiveTime?new Date(o.receiveTime+'T00:00:00').toLocaleDateString('vi-VN'):'—'}</td>
  <td>${money(o.total)}</td>
- <td><button class="btn danger" onclick="deleteOrder(${o.id})">Xóa</button></td></tr>`).join('')||'<tr><td colspan="10">Không tìm thấy đơn hàng</td></tr>'
+ <td><button class="btn danger" onclick="deleteOrder('${o.id}')">Xóa</button></td></tr>`).join('')||'<tr><td colspan="10">Không tìm thấy đơn hàng</td></tr>'
 }
-function deleteOrder(id){
+async function deleteOrder(id){
  const o=data.orders.find(x=>x.id===id);
  if(!o)return;
  if(confirm(`Bạn có chắc muốn xóa đơn hàng của ${o.name} - ${o.vehicle}?`)){
-   data.orders=data.orders.filter(x=>x.id!==id);saveData();updateCount();renderDashboard();toast('Đã xóa đơn hàng.');
+   await deleteDoc(doc(db,'orders',id));toast('Đã xóa đơn hàng.');
  }
 }
-function deleteAllOrders(){
+async function deleteAllOrders(){
  if(!data.orders.length){toast('Hiện chưa có đơn hàng để xóa.');return}
  if(confirm('Bạn có chắc chắn muốn xóa toàn bộ đơn hàng đã đặt? Hành động này không thể hoàn tác.')){
-   data.orders=[];saveData();updateCount();renderDashboard();toast('Đã xóa toàn bộ đơn hàng.');
+   const batch=writeBatch(db);
+   data.orders.forEach(o=>batch.delete(doc(db,'orders',o.id)));
+   await batch.commit();
+   toast('Đã xóa toàn bộ đơn hàng.');
  }
 }
 function openVehicleModal(id=null){
@@ -327,7 +388,7 @@ function openVehicleModal(id=null){
 }
 function openAccessoryModal(id=null){editingType='accessory';editingId=id;const a=id?data.accessories.find(x=>x.id===id):{name:'',price:0};document.getElementById('modalContent').innerHTML=`<h3>${id?'Sửa':'Thêm'} phụ kiện</h3><div class="field"><label>Tên phụ kiện</label><input id="mName" value="${esc(a.name)}"></div><div class="field" style="margin-top:12px"><label>Giá</label><input id="mPrice" type="number" value="${a.price}"></div><div class="actions"><button class="btn primary" onclick="saveAccessory()">Lưu</button><button class="btn secondary" onclick="closeModal()">Hủy</button></div>`;document.getElementById('modal').classList.remove('hidden')}
 function previewUpload(input){const f=input.files[0];if(f){const r=new FileReader();r.onload=e=>{document.getElementById('uploadPreview').src=e.target.result;document.getElementById('uploadPreview').style.display='block'};r.readAsDataURL(f)}}
-function saveVehicle(){
+async function saveVehicle(){
  const name=document.getElementById('mName').value.trim();
  const price=Number(document.getElementById('mPrice').value);
  const colors=document.getElementById('mColors').value.split(',').map(x=>x.trim()).filter(Boolean);
@@ -338,47 +399,55 @@ function saveVehicle(){
    return;
  }
 
- if(editingId){
-   const v=data.vehicles.find(x=>x.id===editingId);
-   if(!v)return;
-   v.name=name;
-   v.price=price;
-   v.color=colors;
-   if(preview.startsWith('data:')) v.image=preview;
- }else{
-   data.vehicles.push({
-     id:'v'+Date.now(),
-     name,
-     price,
-     color:colors,
-     image:preview.startsWith('data:')?preview:''
-   });
+ try{
+   if(editingId){
+     const v=data.vehicles.find(x=>x.id===editingId);
+     if(!v)return;
+     const update={name,price,color:colors};
+     if(preview.startsWith('data:')) update.image=preview;
+     await updateDoc(doc(db,'vehicles',editingId), update);
+   }else{
+     await addDoc(vehiclesCol,{name,price,color:colors,image:preview.startsWith('data:')?preview:''});
+   }
+   closeModal();
+   toast(editingId?'Đã cập nhật thông tin loại xe.':'Đã thêm loại xe mới.');
+ }catch(e){
+   toast('Ảnh có thể quá lớn hoặc có lỗi khi lưu, vui lòng thử ảnh nhỏ hơn.');console.error(e);
  }
-
- saveData();
- closeModal();
- initForm();
- renderDashboard();
- toast(editingId?'Đã cập nhật thông tin loại xe.':'Đã thêm loại xe mới.');
 }
-function saveAccessory(){const name=document.getElementById('mName').value.trim(),price=Number(document.getElementById('mPrice').value);if(!name||!price){toast('Vui lòng nhập tên và giá phụ kiện.');return}if(editingId){const a=data.accessories.find(x=>x.id===editingId);Object.assign(a,{name,price})}else data.accessories.push({id:'a'+Date.now(),name,price});saveData();closeModal();initForm();renderDashboard()}
+async function saveAccessory(){
+ const name=document.getElementById('mName').value.trim(),price=Number(document.getElementById('mPrice').value);
+ if(!name||!price){toast('Vui lòng nhập tên và giá phụ kiện.');return}
+ if(editingId){
+   await updateDoc(doc(db,'accessories',editingId),{name,price});
+ }else{
+   await addDoc(accessoriesCol,{name,price});
+ }
+ closeModal();
+}
 function editVehicle(id){openVehicleModal(id)}function editAccessory(id){openAccessoryModal(id)}
-function deleteVehicle(id){
+async function deleteVehicle(id){
  if(data.vehicles.length<=1){toast('Phải có ít nhất 1 loại xe.');return}
  const v=data.vehicles.find(x=>x.id===id);
  if(!v)return;
  if(confirm(`Bạn có chắc muốn xóa loại xe "${v.name}" cùng toàn bộ màu xe, giá tiền và hình ảnh đã cấu hình?`)){
-   data.vehicles=data.vehicles.filter(x=>x.id!==id);
-   saveData();
-   initForm();
-   renderDashboard();
+   await deleteDoc(doc(db,'vehicles',id));
    toast('Đã xóa loại xe.');
  }
 }
-function deleteAccessory(id){if(confirm('Xóa phụ kiện này?')){data.accessories=data.accessories.filter(a=>a.id!==id);saveData();initForm();renderDashboard()}}
+async function deleteAccessory(id){if(confirm('Xóa phụ kiện này?')){await deleteDoc(doc(db,'accessories',id));}}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('periodType').addEventListener('change',renderDashboard);
-initForm();updateCount();renderStoreName();
+
+// Expose all handlers used by inline HTML attributes (onclick/onchange/oninput)
+Object.assign(window,{
+ showPage, updatePreview, updateTotal, submitRegistration, resetForm,
+ adminLogin, adminLogout, saveStoreName, renderOrders, getFiltered,
+ deleteOrder, deleteAllOrders, openVehicleModal, openAccessoryModal,
+ previewUpload, saveVehicle, saveAccessory, editVehicle, editAccessory,
+ deleteVehicle, deleteAccessory, closeModal, renderDashboard
+});
 </script>
 </body>
+
 </html>
