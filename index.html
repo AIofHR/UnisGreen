@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>UNIS GREEN - Đăng ký mua xe điện</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --primary:#0879c9;--primary2:#00a7e8;--dark:#07538f;--light:#eef8ff;
@@ -86,7 +87,7 @@ header{padding:12px 14px;flex-wrap:wrap;gap:8px}.brand h1{font-size:17px}.brand 
 
   <div id="dashboard" class="hidden">
     <div class="hero"><div><h2>TRUNG TÂM QUẢN LÝ</h2><p>Thống kê đăng ký mua xe điện Unis Green</p></div><button class="btn danger" onclick="adminLogout()">Đăng xuất</button></div>
-    <div class="card toolbar"><div><b>Bộ lọc thống kê</b></div><div class="filters"><select id="periodType" onchange="renderDashboard()"><option value="all">Tất cả thời gian</option><option value="month">Theo tháng</option><option value="year">Theo năm</option></select><select id="periodValue" onchange="renderDashboard()"></select></div></div>
+    <div class="card toolbar"><div><b>Bộ lọc thống kê</b></div><div class="filters"><select id="periodType" onchange="renderDashboard()"><option value="all">Tất cả thời gian</option><option value="month">Theo tháng</option><option value="year">Theo năm</option></select><select id="periodValue" onchange="renderDashboard()"></select><button class="btn primary" onclick="exportToExcel()">⬇ Xuất Excel</button></div></div>
     <div class="stats">
 <div class="stat">Có bao nhiêu người đã đặt xe<b id="statPeople">0</b></div>
 <div class="stat">Tổng số xe đặt<b id="statVehicles">0</b></div>
@@ -359,6 +360,64 @@ function renderDashboard(){
  renderManage();renderOrders(orders);
 }
 
+function exportToExcel(){
+ if(typeof XLSX==='undefined'){toast('Không tải được thư viện xuất Excel, vui lòng kiểm tra kết nối mạng và thử lại.');return}
+ const orders=getFiltered();
+ if(!orders.length){toast('Không có dữ liệu để xuất theo bộ lọc hiện tại.');return}
+
+ const orderRows=orders.map(o=>({
+   'Ngày đặt': new Date(o.date).toLocaleString('vi-VN'),
+   'Họ tên': o.name,
+   'Đơn vị': o.unit||'',
+   'SĐT': o.phone,
+   'Xe': o.vehicle,
+   'SL xe': vehQty(o),
+   'Màu': o.color||'',
+   'Phụ tùng': (o.accessories||[]).map(a=>a.name+(accQty(a)!==1?' x'+accQty(a):'')).join(', '),
+   'Hình thức': o.payment==='installment'?'Trả góp':'Thanh toán hết',
+   'Ngày muốn nhận xe': o.receiveTime?new Date(o.receiveTime+'T00:00:00').toLocaleDateString('vi-VN'):'',
+   'Ghi chú': o.note||'',
+   'Tổng tiền': o.total||0
+ }));
+
+ const vehicleRows=[];
+ data.vehicles.forEach(v=>{
+   const os=orders.filter(o=>String(o.vehicleId)===String(v.id)&&vehQty(o)>0);
+   const configuredColors=Array.isArray(v.color)?v.color.filter(Boolean):[];
+   const colors=[...new Set(configuredColors.concat(os.map(o=>o.color).filter(Boolean)))];
+   if(!colors.length){
+     vehicleRows.push({'Loại xe':v.name,'Màu':'Chưa cấu hình màu','Số lượng':0,'Trả góp':0,'Thanh toán ngay':0,'Thành tiền':0,'Ghi chú':''});
+   }else{
+     colors.forEach(color=>{
+       const co=os.filter(o=>String(o.color||'').trim()===String(color).trim());
+       vehicleRows.push({
+         'Loại xe':v.name,'Màu':color,
+         'Số lượng':co.reduce((s,o)=>s+vehQty(o),0),
+         'Trả góp':co.filter(o=>o.payment==='installment').reduce((s,o)=>s+vehQty(o),0),
+         'Thanh toán ngay':co.filter(o=>o.payment==='cash').reduce((s,o)=>s+vehQty(o),0),
+         'Thành tiền':co.reduce((sum,o)=>sum+(Number(o.total)||0),0),
+         'Ghi chú':co.map(o=>displayName(o)).join(', ')
+       });
+     });
+   }
+ });
+
+ const as={};
+ orders.forEach(o=>(o.accessories||[]).forEach(a=>{
+   const q=accQty(a);if(q<=0)return;
+   if(!as[a.id])as[a.id]={name:a.name,count:0,total:0,names:[]};
+   as[a.id].count+=q;as[a.id].total+=a.price*q;as[a.id].names.push(displayName(o));
+ }));
+ const accessoryRows=Object.values(as).map(a=>({'Loại':a.name,'Số lượng':a.count,'Thành tiền':a.total,'Ghi chú':a.names.join(', ')}));
+
+ const wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(orderRows),'Don hang');
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(vehicleRows),'Thong ke xe theo mau');
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(accessoryRows),'Thong ke phu tung');
+ const stamp=new Date().toISOString().slice(0,10);
+ XLSX.writeFile(wb,`unisgreen-thongke-${stamp}.xlsx`);
+ toast('Đã xuất file Excel, hãy vào Google Sheets → Tệp → Nhập (Import) để tải lên.');
+}
 function renderPie(byV){
  const entries=Object.entries(byV),total=entries.reduce((s,[,n])=>s+n,0),colors=['#0879c9','#00a7e8','#17a673','#f5a623','#8e63ce','#e74c3c','#16a085'];let start=0,parts=[];
  entries.forEach(([name,n],i)=>{const end=start+n/total*360;parts.push(`${colors[i%colors.length]} ${start}deg ${end}deg`);start=end});
@@ -522,7 +581,8 @@ Object.assign(window,{
  deleteOrder, deleteAllOrders, openVehicleModal, openAccessoryModal,
  previewUpload, saveVehicle, saveAccessory, editVehicle, editAccessory,
  deleteVehicle, deleteAccessory, closeModal, renderDashboard,
- onColorChange, toggleAccessoryQty, renderColorImageInputs, previewColorUpload
+ onColorChange, toggleAccessoryQty, renderColorImageInputs, previewColorUpload,
+ exportToExcel
 });
 </script>
 </body>
