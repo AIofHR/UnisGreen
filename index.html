@@ -401,6 +401,13 @@ function renderDashboard(){
      });
    }
  });
+ if(vehicleColorRows.length){
+   const totalQty=orders.reduce((s,o)=>s+vehQty(o),0);
+   const totalInst=orders.filter(o=>o.payment==='installment').reduce((s,o)=>s+vehQty(o),0);
+   const totalCash=orders.filter(o=>o.payment==='cash').reduce((s,o)=>s+vehQty(o),0);
+   const totalMoney=orders.reduce((s,o)=>s+(Number(o.total)||0),0);
+   vehicleColorRows.push(`<tr style="font-weight:800;background:#f0f8fd"><td colspan="2">TỔNG CỘNG</td><td>${totalQty}</td><td>${totalInst}</td><td>${totalCash}</td><td>${money(totalMoney)}</td><td>—</td></tr>`);
+ }
  document.getElementById('vehicleStats').innerHTML=vehicleColorRows.join('')||'<tr><td colspan="7">Chưa có dữ liệu</td></tr>';
 
  const as={};
@@ -409,7 +416,13 @@ function renderDashboard(){
    if(!as[a.id])as[a.id]={name:a.name,count:0,total:0,names:[]};
    as[a.id].count+=q;as[a.id].total+=a.price*q;as[a.id].names.push(displayName(o))
  }));
- document.getElementById('accessoryStats').innerHTML=Object.values(as).map(a=>`<tr><td>${esc(a.name)}</td><td>${a.count}</td><td>${money(a.total)}</td><td class="note">${a.names.map(esc).join(', ')}</td></tr>`).join('')||'<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
+ const accessoryRowsHtml=Object.values(as).map(a=>`<tr><td>${esc(a.name)}</td><td>${a.count}</td><td>${money(a.total)}</td><td class="note">${a.names.map(esc).join(', ')}</td></tr>`);
+ if(accessoryRowsHtml.length){
+   const totalAccCount=Object.values(as).reduce((s,a)=>s+a.count,0);
+   const totalAccMoney=Object.values(as).reduce((s,a)=>s+a.total,0);
+   accessoryRowsHtml.push(`<tr style="font-weight:800;background:#f0f8fd"><td>TỔNG CỘNG</td><td>${totalAccCount}</td><td>${money(totalAccMoney)}</td><td>—</td></tr>`);
+ }
+ document.getElementById('accessoryStats').innerHTML=accessoryRowsHtml.join('')||'<tr><td colspan="4">Chưa có dữ liệu</td></tr>';
 
  renderManage();renderOrders(orders);
 }
@@ -507,7 +520,31 @@ function renderOrders(orders){
  <td>${o.receiveTime?new Date(o.receiveTime+'T00:00:00').toLocaleDateString('vi-VN'):'—'}</td>
  <td class="note">${esc(o.note||'—')}</td>
  <td>${money(o.total)}</td>
- <td><button class="btn danger" onclick="deleteOrder('${o.id}')">Xóa</button></td></tr>`).join('')||'<tr><td colspan="13">Không tìm thấy đơn hàng</td></tr>'
+ <td><button class="btn secondary" onclick="viewOrder('${o.id}')">Xem đơn</button> <button class="btn danger" onclick="deleteOrder('${o.id}')">Xóa</button></td></tr>`).join('')||'<tr><td colspan="13">Không tìm thấy đơn hàng</td></tr>'
+}
+function viewOrder(id){
+ const o=data.orders.find(x=>x.id===id);
+ if(!o)return;
+ const accHtml=(o.accessories||[]).length?(o.accessories||[]).map(a=>`<div class="price-row"><span>${esc(a.name)}${accQty(a)!==1?' x'+accQty(a):''}</span><b>${money(a.price*accQty(a))}</b></div>`).join(''):'<div class="price-row"><span>Không có phụ tùng</span></div>';
+ document.getElementById('modalContent').innerHTML=`
+ <h3>Chi tiết đơn hàng</h3>
+ <div class="price-box">
+   <div class="price-row"><span>Ngày đặt</span><b>${new Date(o.date).toLocaleString('vi-VN')}</b></div>
+   <div class="price-row"><span>Họ và tên</span><b>${esc(o.name)}</b></div>
+   <div class="price-row"><span>Đơn vị</span><b>${esc(o.unit||'—')}</b></div>
+   <div class="price-row"><span>Số điện thoại</span><b>${esc(o.phone)}</b></div>
+   <div class="price-row"><span>Loại xe</span><b>${esc(o.vehicle)}</b></div>
+   <div class="price-row"><span>Màu xe</span><b>${esc(o.color||'—')}</b></div>
+   <div class="price-row"><span>Số lượng xe</span><b>${vehQty(o)}</b></div>
+   <div class="price-row"><span>Hình thức thanh toán</span><b>${o.payment==='installment'?'Trả góp':'Thanh toán hết'}</b></div>
+   <div class="price-row"><span>Ngày muốn nhận xe</span><b>${o.receiveTime?new Date(o.receiveTime+'T00:00:00').toLocaleDateString('vi-VN'):'—'}</b></div>
+   <div class="price-row"><span>Ghi chú</span><b>${esc(o.note||'—')}</b></div>
+   <div style="margin-top:10px;font-weight:800">Phụ tùng:</div>
+   ${accHtml}
+   <div class="price-row total"><span>TỔNG CỘNG</span><span>${money(o.total)}</span></div>
+ </div>
+ <div class="actions"><button class="btn secondary" onclick="closeModal()">Đóng</button></div>`;
+ document.getElementById('modal').classList.remove('hidden');
 }
 async function deleteOrder(id){
  const o=data.orders.find(x=>x.id===id);
@@ -632,7 +669,7 @@ document.getElementById('periodType').addEventListener('change',renderDashboard)
 Object.assign(window,{
  showPage, updatePreview, updateTotal, submitRegistration, resetForm,
  adminLogin, adminLogout, saveStoreName, previewStoreImage, renderOrders, getFiltered,
- deleteOrder, deleteAllOrders, openVehicleModal, openAccessoryModal,
+ deleteOrder, deleteAllOrders, viewOrder, openVehicleModal, openAccessoryModal,
  previewUpload, saveVehicle, saveAccessory, editVehicle, editAccessory,
  deleteVehicle, deleteAccessory, closeModal, renderDashboard,
  onColorChange, toggleAccessoryQty, renderColorImageInputs, previewColorUpload,
