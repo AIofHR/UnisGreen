@@ -259,15 +259,37 @@ function renderStoreName(){
  const mascotPreview=document.getElementById('storeMascotPreview');
  if(mascotPreview && storeMascot && !editingStoreImages.mascot){mascotPreview.src=storeMascot;mascotPreview.style.display='block'}
 }
+// Thu nhỏ & nén ảnh về JPEG trước khi lưu, tránh vượt giới hạn dung lượng của Firestore (~1MB/tài liệu)
+function readAndCompressImage(file, maxDim=900, quality=0.72){
+ return new Promise((resolve,reject)=>{
+   const reader=new FileReader();
+   reader.onload=e=>{
+     const img=new Image();
+     img.onload=()=>{
+       let {width,height}=img;
+       if(width>maxDim||height>maxDim){
+         if(width>height){height=Math.round(height*maxDim/width);width=maxDim}
+         else{width=Math.round(width*maxDim/height);height=maxDim}
+       }
+       const canvas=document.createElement('canvas');
+       canvas.width=width;canvas.height=height;
+       canvas.getContext('2d').drawImage(img,0,0,width,height);
+       resolve(canvas.toDataURL('image/jpeg',quality));
+     };
+     img.onerror=()=>reject(new Error('Không đọc được ảnh'));
+     img.src=e.target.result;
+   };
+   reader.onerror=()=>reject(new Error('Không đọc được tệp'));
+   reader.readAsDataURL(file);
+ });
+}
 function previewStoreImage(input, type){
  const f=input.files[0];if(!f)return;
- const r=new FileReader();
- r.onload=e=>{
-   editingStoreImages[type]=e.target.result;
+ readAndCompressImage(f).then(dataUrl=>{
+   editingStoreImages[type]=dataUrl;
    const img=document.getElementById(type==='logo'?'storeLogoPreview':'storeMascotPreview');
-   if(img){img.src=e.target.result;img.style.display='block'}
- };
- r.readAsDataURL(f);
+   if(img){img.src=dataUrl;img.style.display='block'}
+ }).catch(err=>{toast('Không xử lý được ảnh này, vui lòng thử ảnh khác.');console.error(err)});
 }
 async function saveStoreName(){
  const n=document.getElementById('storeNameInput').value.trim();
@@ -603,16 +625,20 @@ function renderColorImageInputs(){
 }
 function previewColorUpload(input,color){
  const f=input.files[0];if(!f)return;
- const r=new FileReader();
- r.onload=e=>{
-   editingColorImages[color]=e.target.result;
+ readAndCompressImage(f).then(dataUrl=>{
+   editingColorImages[color]=dataUrl;
    const img=document.querySelector(`img[data-color-preview="${CSS.escape(color)}"]`);
-   if(img){img.src=e.target.result;img.style.display='block'}
- };
- r.readAsDataURL(f);
+   if(img){img.src=dataUrl;img.style.display='block'}
+ }).catch(err=>{toast('Không xử lý được ảnh này, vui lòng thử ảnh khác.');console.error(err)});
 }
 function openAccessoryModal(id=null){editingType='accessory';editingId=id;const a=id?data.accessories.find(x=>x.id===id):{name:'',price:0};document.getElementById('modalContent').innerHTML=`<h3>${id?'Sửa':'Thêm'} phụ kiện</h3><div class="field"><label>Tên phụ kiện</label><input id="mName" value="${esc(a.name)}"></div><div class="field" style="margin-top:12px"><label>Giá</label><input id="mPrice" type="number" value="${a.price}"></div><div class="actions"><button class="btn primary" onclick="saveAccessory()">Lưu</button><button class="btn secondary" onclick="closeModal()">Hủy</button></div>`;document.getElementById('modal').classList.remove('hidden')}
-function previewUpload(input){const f=input.files[0];if(f){const r=new FileReader();r.onload=e=>{document.getElementById('uploadPreview').src=e.target.result;document.getElementById('uploadPreview').style.display='block'};r.readAsDataURL(f)}}
+function previewUpload(input){
+ const f=input.files[0];if(!f)return;
+ readAndCompressImage(f).then(dataUrl=>{
+   document.getElementById('uploadPreview').src=dataUrl;
+   document.getElementById('uploadPreview').style.display='block';
+ }).catch(err=>{toast('Không xử lý được ảnh này, vui lòng thử ảnh khác.');console.error(err)});
+}
 async function saveVehicle(){
  const name=document.getElementById('mName').value.trim();
  const price=Number(document.getElementById('mPrice').value);
