@@ -104,7 +104,7 @@ header{padding:12px 14px;flex-wrap:wrap;gap:8px}.brand h1{font-size:17px}.brand 
     <div class="card"><h3>Phần 2 — Thống kê phụ tùng</h3><div class="table-wrap"><table><thead><tr><th>Loại</th><th>Số lượng</th><th>Thành tiền</th><th>Ghi chú</th></tr></thead><tbody id="accessoryStats"></tbody></table></div></div>
 
     <div class="manage-grid">
-      <div class="card"><h3>Phần 3 — Quản lý loại xe</h3><button class="btn primary" onclick="openVehicleModal()">+ Thêm loại xe</button><div class="table-wrap" style="margin-top:15px"><table><thead><tr><th>Loại xe</th><th>Giá tiền</th><th>Hình ảnh</th><th>Link tham khảo</th><th>Thao tác</th></tr></thead><tbody id="vehicleManage"></tbody></table></div></div>
+      <div class="card"><div class="toolbar"><h3 style="margin:0">Phần 3 — Quản lý loại xe</h3><div class="filters"><select id="vehicleSort" onchange="renderManage()"><option value="default">Sắp xếp: Mặc định</option><option value="nameAsc">Tên A → Z</option><option value="nameDesc">Tên Z → A</option></select><button class="btn primary" onclick="openVehicleModal()">+ Thêm loại xe</button></div></div><div class="table-wrap" style="margin-top:15px"><table><thead><tr><th>Loại xe</th><th>Giá tiền</th><th>Hình ảnh</th><th>Link tham khảo</th><th>Thao tác</th></tr></thead><tbody id="vehicleManage"></tbody></table></div></div>
       <div class="card"><h3>Quản lý phụ kiện</h3><button class="btn primary" onclick="openAccessoryModal()">+ Thêm phụ kiện</button><div class="table-wrap" style="margin-top:15px"><table><thead><tr><th>Phụ kiện</th><th>Giá</th><th></th></tr></thead><tbody id="accessoryManage"></tbody></table></div></div>
     </div>
     <div class="card">
@@ -501,7 +501,11 @@ function renderPie(byV){
  document.getElementById('legend').innerHTML=entries.map(([n,c],i)=>`<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]}"></i> ${esc(n)}: ${c}</span>`).join('')||'Chưa có dữ liệu đăng ký';
 }
 function renderManage(){
- document.getElementById('vehicleManage').innerHTML=data.vehicles.map(v=>`<tr>
+ const sortMode=document.getElementById('vehicleSort')?.value||'default';
+ const vehicles=data.vehicles.slice();
+ if(sortMode==='nameAsc') vehicles.sort((a,b)=>a.name.localeCompare(b.name,'vi'));
+ else if(sortMode==='nameDesc') vehicles.sort((a,b)=>b.name.localeCompare(a.name,'vi'));
+ document.getElementById('vehicleManage').innerHTML=vehicles.map(v=>`<tr>
  <td><b>${esc(v.name)}</b></td>
  <td>Kèm pin: <b>${money(vehiclePriceOf(v,'battery'))}</b><br>Không kèm pin: <b>${money(vehiclePriceOf(v,'nobattery'))}</b></td>
  <td>${v.image?`<img class="preview-thumb" src="${v.image}" alt="${esc(v.name)}">`:'—'}</td>
