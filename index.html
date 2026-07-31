@@ -314,7 +314,9 @@ async function saveStoreName(){
 }
 
 function initForm(){
- const v=document.getElementById('vehicle');v.innerHTML=data.vehicles.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+ const v=document.getElementById('vehicle');
+ const sortedVehicles=data.vehicles.slice().sort((a,b)=>a.name.localeCompare(b.name,'vi'));
+ v.innerHTML=sortedVehicles.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
  renderAccessories();updatePreview();
 }
 function renderAccessories(){
