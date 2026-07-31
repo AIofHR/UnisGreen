@@ -59,7 +59,7 @@ header{padding:12px 14px;flex-wrap:wrap;gap:8px}.brand h1{font-size:17px}.brand 
         <div class="field"><label>Đơn vị</label><input id="unit" placeholder="Nhập đơn vị / chi nhánh"></div>
         <div class="field"><label>Loại xe muốn mua *</label><select id="vehicle" onchange="updatePreview()"></select></div>
         <div class="field"><label>Hình thức pin *</label><select id="batteryType" onchange="updateTotal()"><option value="battery">Kèm pin</option><option value="nobattery">Không kèm pin</option></select></div>
-        <div class="field"><label>Màu xe</label><select id="color" onchange="onColorChange()"></select></div>
+        <div class="field"><label>Ghi chú màu xe</label><input id="colorNote" placeholder="Ví dụ: Trắng, Đen, Xanh..."></div>
         <div class="field"><label>Số lượng xe</label><input id="vehicleQty" type="number" min="0" value="1" oninput="updateTotal()"></div>
         <div class="field full"><label>Phụ tùng đi kèm</label><div id="accessories" class="checks"></div></div>
         <div class="field"><label>Hình thức trả *</label><select id="payment"><option value="installment">Trả góp</option><option value="cash">Thanh toán hết</option></select></div>
@@ -100,11 +100,11 @@ header{padding:12px 14px;flex-wrap:wrap;gap:8px}.brand h1{font-size:17px}.brand 
 
     <div class="card"><h3>Biểu đồ tỷ lệ đăng ký theo loại xe</h3><div class="chart-wrap"><div id="pieChart" class="pie"></div></div><div id="legend" class="legend"></div></div>
 
-    <div class="card"><h3>Phần 1 — Thống kê xe theo màu</h3><div class="table-wrap"><table><thead><tr><th>Loại xe</th><th>Màu</th><th>Số lượng</th><th>Trả góp</th><th>Thanh toán ngay</th><th>Thành tiền</th><th>Ghi chú</th></tr></thead><tbody id="vehicleStats"></tbody></table></div></div>
+    <div class="card"><h3>Phần 1 — Thống kê theo loại xe</h3><div class="table-wrap"><table><thead><tr><th>Loại xe</th><th>Số lượng</th><th>Trả góp</th><th>Thanh toán ngay</th><th>Thành tiền</th><th>Ghi chú</th></tr></thead><tbody id="vehicleStats"></tbody></table></div></div>
     <div class="card"><h3>Phần 2 — Thống kê phụ tùng</h3><div class="table-wrap"><table><thead><tr><th>Loại</th><th>Số lượng</th><th>Thành tiền</th><th>Ghi chú</th></tr></thead><tbody id="accessoryStats"></tbody></table></div></div>
 
     <div class="manage-grid">
-      <div class="card"><h3>Phần 3 — Quản lý loại xe</h3><button class="btn primary" onclick="openVehicleModal()">+ Thêm loại xe</button><div class="table-wrap" style="margin-top:15px"><table><thead><tr><th>Loại xe</th><th>Màu xe</th><th>Giá tiền</th><th>Hình ảnh</th><th>Link tham khảo</th><th>Thao tác</th></tr></thead><tbody id="vehicleManage"></tbody></table></div></div>
+      <div class="card"><h3>Phần 3 — Quản lý loại xe</h3><button class="btn primary" onclick="openVehicleModal()">+ Thêm loại xe</button><div class="table-wrap" style="margin-top:15px"><table><thead><tr><th>Loại xe</th><th>Giá tiền</th><th>Hình ảnh</th><th>Link tham khảo</th><th>Thao tác</th></tr></thead><tbody id="vehicleManage"></tbody></table></div></div>
       <div class="card"><h3>Quản lý phụ kiện</h3><button class="btn primary" onclick="openAccessoryModal()">+ Thêm phụ kiện</button><div class="table-wrap" style="margin-top:15px"><table><thead><tr><th>Phụ kiện</th><th>Giá</th><th></th></tr></thead><tbody id="accessoryManage"></tbody></table></div></div>
     </div>
     <div class="card">
@@ -113,7 +113,7 @@ header{padding:12px 14px;flex-wrap:wrap;gap:8px}.brand h1{font-size:17px}.brand 
   <input id="orderSearch" oninput="renderOrders(getFiltered())" placeholder="Tìm theo tên, số điện thoại, loại xe..." style="padding:11px;border:1px solid var(--border);border-radius:9px;min-width:260px">
   <button class="btn danger" onclick="deleteAllOrders()">Xóa tất cả đơn hàng</button>
 </div>
-<div class="table-wrap"><table><thead><tr><th>Ngày đặt</th><th>Họ tên</th><th>Đơn vị</th><th>SĐT</th><th>Xe</th><th>SL xe</th><th>Pin</th><th>Màu</th><th>Phụ tùng</th><th>Hình thức</th><th>Ngày muốn nhận xe</th><th>Ghi chú</th><th>Tổng tiền</th><th>Thao tác</th></tr></thead><tbody id="ordersTable"></tbody></table></div></div>
+<div class="table-wrap"><table><thead><tr><th>Ngày đặt</th><th>Họ tên</th><th>Đơn vị</th><th>SĐT</th><th>Xe</th><th>SL xe</th><th>Pin</th><th>Ghi chú màu xe</th><th>Phụ tùng</th><th>Hình thức</th><th>Ngày muốn nhận xe</th><th>Ghi chú</th><th>Tổng tiền</th><th>Thao tác</th></tr></thead><tbody id="ordersTable"></tbody></table></div></div>
 <div class="card">
 <h3>Cài đặt hiển thị trang đăng ký</h3>
 <p style="color:var(--muted)">Thay đổi tên cửa hàng, logo, hình linh vật, tiêu đề và mô tả hiển thị ở trang đăng ký cho chuyên nghiệp hơn.</p>
@@ -165,9 +165,9 @@ const storeSettingsRef = doc(db, 'settings', 'store');
 
 // ===== APP DATA (mirror Firestore in memory) =====
 const defaultVehicles = [
- {name:'Evo 200',priceBattery:22000000,priceNoBattery:18000000,refLink:'',color:['Trắng','Đen','Xanh'],image:''},
- {name:'Feliz 2',priceBattery:29000000,priceNoBattery:24000000,refLink:'',color:['Trắng','Đen','Xanh lá'],image:''},
- {name:'Klara S',priceBattery:36000000,priceNoBattery:30000000,refLink:'',color:['Trắng','Đỏ','Xanh'],image:''}
+ {name:'Evo 200',priceBattery:22000000,priceNoBattery:18000000,refLink:'',image:''},
+ {name:'Feliz 2',priceBattery:29000000,priceNoBattery:24000000,refLink:'',image:''},
+ {name:'Klara S',priceBattery:36000000,priceNoBattery:30000000,refLink:'',image:''}
 ];
 const defaultAccessories = [
  {name:'Mũ bảo hiểm Unis Green',price:500000},
@@ -335,20 +335,13 @@ function vehiclePriceOf(v,batteryType){
  return batteryType==='nobattery'?(v.priceNoBattery??v.price??0):(v.priceBattery??v.price??0);
 }
 function renderVehicleImage(v){
- const color=document.getElementById('color').value;
- const src=(v.images&&v.images[color])||v.image||'';
+ const src=v.image||'';
  const img=src?`<img src="${src}" alt="${esc(v.name)}">`:`<div class="placeholder">🛵</div>`;
  const linkHtml=v.refLink?`<p><a href="${esc(v.refLink)}" target="_blank" rel="noopener">🔗 Link tham khảo</a></p>`:'';
  document.getElementById('vehiclePreview').innerHTML=img+`<h3>${esc(v.name)}</h3>`+linkHtml+`<p>Giá kèm pin: <b>${money(vehiclePriceOf(v,'battery'))}</b></p><p>Giá không kèm pin: <b>${money(vehiclePriceOf(v,'nobattery'))}</b></p>`;
 }
 function updatePreview(){
  const v=data.vehicles.find(x=>x.id===document.getElementById('vehicle').value)||data.vehicles[0]; if(!v)return;
- document.getElementById('color').innerHTML=(v.color||[]).map(c=>`<option>${esc(c)}</option>`).join('');
- renderVehicleImage(v);
- updateTotal();
-}
-function onColorChange(){
- const v=data.vehicles.find(x=>x.id===document.getElementById('vehicle').value);if(!v)return;
  renderVehicleImage(v);
  updateTotal();
 }
@@ -370,18 +363,19 @@ function updateTotal(){
  const {v,vq,selected,vp,ap,total,batteryType}=computeSelection();if(!v)return;
  document.getElementById('vehiclePrice').textContent=money(vp);document.getElementById('accessoryPrice').textContent=money(ap);document.getElementById('totalPrice').textContent=money(total);
  const batteryLabel=batteryType==='nobattery'?'Không kèm pin':'Kèm pin';
- const vehiclePart=vq>0?`${esc(v.name)} x${vq} — ${batteryLabel} — ${esc(document.getElementById('color').value||'')}`:'Chưa chọn số lượng xe (0)';
+ const colorNote=(document.getElementById('colorNote')?.value||'').trim();
+ const vehiclePart=vq>0?`${esc(v.name)} x${vq} — ${batteryLabel}${colorNote?' — '+esc(colorNote):''}`:'Chưa chọn số lượng xe (0)';
  const accPart=selected.length?selected.map(a=>esc(a.name)+' x'+a.qty).join(', '):'';
  document.getElementById('selectedSummary').innerHTML=`<div><b>Đã chọn:</b> ${vehiclePart}${accPart?' + '+accPart:''}</div>`;
 }
-function resetForm(){document.getElementById('name').value='';document.getElementById('phone').value='';document.getElementById('unit').value='';document.getElementById('receiveTime').value='';document.getElementById('note').value='';document.getElementById('vehicleQty').value=1;document.getElementById('batteryType').value='battery';document.querySelectorAll('#accessories input[type=checkbox]').forEach(x=>x.checked=false);document.querySelectorAll('#accessories .accQty').forEach(x=>{x.value=1;x.style.display='none'});initForm()}
+function resetForm(){document.getElementById('name').value='';document.getElementById('phone').value='';document.getElementById('unit').value='';document.getElementById('receiveTime').value='';document.getElementById('note').value='';document.getElementById('colorNote').value='';document.getElementById('vehicleQty').value=1;document.getElementById('batteryType').value='battery';document.querySelectorAll('#accessories input[type=checkbox]').forEach(x=>x.checked=false);document.querySelectorAll('#accessories .accQty').forEach(x=>{x.value=1;x.style.display='none'});initForm()}
 async function submitRegistration(){
  const name=document.getElementById('name').value.trim(),phone=document.getElementById('phone').value.trim(),vid=document.getElementById('vehicle').value,receiveTime=document.getElementById('receiveTime').value;
  if(!name||!phone||!vid||!receiveTime){toast('Vui lòng nhập đầy đủ họ tên, số điện thoại, loại xe và thời gian muốn nhận xe.');return}
  const {v,vq,selected,total,batteryType}=computeSelection();
  if(!v)return;
  if(vq<=0 && !selected.length){toast('Vui lòng chọn số lượng xe hoặc ít nhất 1 phụ tùng.');return}
- const order={date:new Date().toISOString(),name,phone,unit:document.getElementById('unit').value.trim(),vehicleId:v.id,vehicle:v.name,vehicleQty:vq,batteryType,color:document.getElementById('color').value,accessories:selected.map(a=>({id:a.id,name:a.name,price:a.price,qty:a.qty})),payment:document.getElementById('payment').value,receiveTime,note:document.getElementById('note').value,total};
+ const order={date:new Date().toISOString(),name,phone,unit:document.getElementById('unit').value.trim(),vehicleId:v.id,vehicle:v.name,vehicleQty:vq,batteryType,colorNote:document.getElementById('colorNote').value.trim(),accessories:selected.map(a=>({id:a.id,name:a.name,price:a.price,qty:a.qty})),payment:document.getElementById('payment').value,receiveTime,note:document.getElementById('note').value,total};
  try{
    await addDoc(ordersCol, order);
    celebrate();toast('Cảm ơn bạn đã lựa chọn Unis Green!');resetForm();
@@ -412,37 +406,26 @@ function renderDashboard(){
 
  const byV={};orders.forEach(o=>{if(vehQty(o)>0)byV[o.vehicle]=(byV[o.vehicle]||0)+vehQty(o)});renderPie(byV);
 
- // Thống kê màu: luôn lấy danh sách màu đã cấu hình của từng xe,
- // sau đó cộng đúng các đơn hàng có vehicleId + color tương ứng.
+ // Thống kê theo loại xe (không phân theo màu nữa).
  // Loại xe nếu số lượng chọn là 0 thì không tính vào thống kê.
- const vehicleColorRows=[];
+ const vehicleRows=[];
  data.vehicles.forEach(v=>{
    const os=orders.filter(o=>String(o.vehicleId)===String(v.id)&&vehQty(o)>0);
-   const configuredColors=Array.isArray(v.color)?v.color.filter(Boolean):[];
-   const colors=[...new Set(configuredColors.concat(os.map(o=>o.color).filter(Boolean)))];
-
-   if(!colors.length){
-     vehicleColorRows.push(`<tr><td>${esc(v.name)}</td><td>Chưa cấu hình màu</td><td>0</td><td>0</td><td>0</td><td>${money(0)}</td><td>—</td></tr>`);
-   }else{
-     colors.forEach(color=>{
-       const co=os.filter(o=>String(o.color||'').trim()===String(color).trim());
-       const qtySum=co.reduce((s,o)=>s+vehQty(o),0);
-       const inst=co.filter(o=>o.payment==='installment').reduce((s,o)=>s+vehQty(o),0);
-       const cash=co.filter(o=>o.payment==='cash').reduce((s,o)=>s+vehQty(o),0);
-       vehicleColorRows.push(
-         `<tr><td>${esc(v.name)}</td><td><b>${esc(color)}</b></td><td>${qtySum}</td><td>${inst}</td><td>${cash}</td><td>${money(co.reduce((sum,o)=>sum+(Number(o.total)||0),0))}</td><td class="note">${co.map(o=>esc(displayName(o))).join(', ')||'—'}</td></tr>`
-       );
-     });
-   }
+   const qtySum=os.reduce((s,o)=>s+vehQty(o),0);
+   const inst=os.filter(o=>o.payment==='installment').reduce((s,o)=>s+vehQty(o),0);
+   const cash=os.filter(o=>o.payment==='cash').reduce((s,o)=>s+vehQty(o),0);
+   vehicleRows.push(
+     `<tr><td>${esc(v.name)}</td><td>${qtySum}</td><td>${inst}</td><td>${cash}</td><td>${money(os.reduce((sum,o)=>sum+(Number(o.total)||0),0))}</td><td class="note">${os.map(o=>esc(displayName(o))).join(', ')||'—'}</td></tr>`
+   );
  });
- if(vehicleColorRows.length){
+ if(vehicleRows.length){
    const totalQty=orders.reduce((s,o)=>s+vehQty(o),0);
    const totalInst=orders.filter(o=>o.payment==='installment').reduce((s,o)=>s+vehQty(o),0);
    const totalCash=orders.filter(o=>o.payment==='cash').reduce((s,o)=>s+vehQty(o),0);
    const totalMoney=orders.reduce((s,o)=>s+(Number(o.total)||0),0);
-   vehicleColorRows.push(`<tr style="font-weight:800;background:#f0f8fd"><td colspan="2">TỔNG CỘNG</td><td>${totalQty}</td><td>${totalInst}</td><td>${totalCash}</td><td>${money(totalMoney)}</td><td>—</td></tr>`);
+   vehicleRows.push(`<tr style="font-weight:800;background:#f0f8fd"><td>TỔNG CỘNG</td><td>${totalQty}</td><td>${totalInst}</td><td>${totalCash}</td><td>${money(totalMoney)}</td><td>—</td></tr>`);
  }
- document.getElementById('vehicleStats').innerHTML=vehicleColorRows.join('')||'<tr><td colspan="7">Chưa có dữ liệu</td></tr>';
+ document.getElementById('vehicleStats').innerHTML=vehicleRows.join('')||'<tr><td colspan="6">Chưa có dữ liệu</td></tr>';
 
  const as={};
  orders.forEach(o=>(o.accessories||[]).forEach(a=>{
@@ -474,7 +457,7 @@ function exportToExcel(){
    'Xe': o.vehicle,
    'SL xe': vehQty(o),
    'Pin': batteryLabelOf(o),
-   'Màu': o.color||'',
+   'Ghi chú màu xe': o.colorNote||'',
    'Phụ tùng': (o.accessories||[]).map(a=>a.name+(accQty(a)!==1?' x'+accQty(a):'')).join(', '),
    'Hình thức': o.payment==='installment'?'Trả góp':'Thanh toán hết',
    'Ngày muốn nhận xe': o.receiveTime?new Date(o.receiveTime+'T00:00:00').toLocaleDateString('vi-VN'):'',
@@ -485,23 +468,14 @@ function exportToExcel(){
  const vehicleRows=[];
  data.vehicles.forEach(v=>{
    const os=orders.filter(o=>String(o.vehicleId)===String(v.id)&&vehQty(o)>0);
-   const configuredColors=Array.isArray(v.color)?v.color.filter(Boolean):[];
-   const colors=[...new Set(configuredColors.concat(os.map(o=>o.color).filter(Boolean)))];
-   if(!colors.length){
-     vehicleRows.push({'Loại xe':v.name,'Màu':'Chưa cấu hình màu','Số lượng':0,'Trả góp':0,'Thanh toán ngay':0,'Thành tiền':0,'Ghi chú':''});
-   }else{
-     colors.forEach(color=>{
-       const co=os.filter(o=>String(o.color||'').trim()===String(color).trim());
-       vehicleRows.push({
-         'Loại xe':v.name,'Màu':color,
-         'Số lượng':co.reduce((s,o)=>s+vehQty(o),0),
-         'Trả góp':co.filter(o=>o.payment==='installment').reduce((s,o)=>s+vehQty(o),0),
-         'Thanh toán ngay':co.filter(o=>o.payment==='cash').reduce((s,o)=>s+vehQty(o),0),
-         'Thành tiền':co.reduce((sum,o)=>sum+(Number(o.total)||0),0),
-         'Ghi chú':co.map(o=>displayName(o)).join(', ')
-       });
-     });
-   }
+   vehicleRows.push({
+     'Loại xe':v.name,
+     'Số lượng':os.reduce((s,o)=>s+vehQty(o),0),
+     'Trả góp':os.filter(o=>o.payment==='installment').reduce((s,o)=>s+vehQty(o),0),
+     'Thanh toán ngay':os.filter(o=>o.payment==='cash').reduce((s,o)=>s+vehQty(o),0),
+     'Thành tiền':os.reduce((sum,o)=>sum+(Number(o.total)||0),0),
+     'Ghi chú':os.map(o=>displayName(o)).join(', ')
+   });
  });
 
  const as={};
@@ -514,7 +488,7 @@ function exportToExcel(){
 
  const wb=XLSX.utils.book_new();
  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(orderRows),'Don hang');
- XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(vehicleRows),'Thong ke xe theo mau');
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(vehicleRows),'Thong ke theo loai xe');
  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(accessoryRows),'Thong ke phu tung');
  const stamp=new Date().toISOString().slice(0,10);
  XLSX.writeFile(wb,`unisgreen-thongke-${stamp}.xlsx`);
@@ -529,7 +503,6 @@ function renderPie(byV){
 function renderManage(){
  document.getElementById('vehicleManage').innerHTML=data.vehicles.map(v=>`<tr>
  <td><b>${esc(v.name)}</b></td>
- <td>${v.color?.map(c=>`<span style="display:inline-block;background:#f0f8fd;border:1px solid var(--border);padding:4px 8px;border-radius:6px;margin:2px">${esc(c)}</span>`).join('')||'—'}</td>
  <td>Kèm pin: <b>${money(vehiclePriceOf(v,'battery'))}</b><br>Không kèm pin: <b>${money(vehiclePriceOf(v,'nobattery'))}</b></td>
  <td>${v.image?`<img class="preview-thumb" src="${v.image}" alt="${esc(v.name)}">`:'—'}</td>
  <td>${v.refLink?`<a href="${esc(v.refLink)}" target="_blank" rel="noopener">Xem link</a>`:'—'}</td>
@@ -548,11 +521,11 @@ function batteryLabelOf(o){return o.batteryType==='nobattery'?'Không kèm pin':
 function renderOrders(orders){
  const q=(document.getElementById('orderSearch')?.value||'').trim().toLowerCase();
  const filtered=orders.slice().reverse().filter(o=>
-   !q || [o.name,o.phone,o.vehicle,o.color,o.receiveTime,o.unit,o.note].some(x=>String(x||'').toLowerCase().includes(q))
+   !q || [o.name,o.phone,o.vehicle,o.colorNote,o.receiveTime,o.unit,o.note].some(x=>String(x||'').toLowerCase().includes(q))
  );
  document.getElementById('ordersTable').innerHTML=filtered.map(o=>`<tr>
  <td>${new Date(o.date).toLocaleString('vi-VN')}</td><td><b>${esc(o.name)}</b></td><td>${esc(o.unit||'—')}</td><td>${esc(o.phone)}</td>
- <td>${esc(o.vehicle)}</td><td>${vehQty(o)}</td><td>${batteryLabelOf(o)}</td><td>${esc(o.color)}</td><td>${(o.accessories||[]).map(a=>esc(a.name)+(accQty(a)!==1?' x'+accQty(a):'')).join(', ')||'—'}</td>
+ <td>${esc(o.vehicle)}</td><td>${vehQty(o)}</td><td>${batteryLabelOf(o)}</td><td>${esc(o.colorNote||'—')}</td><td>${(o.accessories||[]).map(a=>esc(a.name)+(accQty(a)!==1?' x'+accQty(a):'')).join(', ')||'—'}</td>
  <td>${o.payment==='installment'?'Trả góp':'Thanh toán hết'}</td>
  <td>${o.receiveTime?new Date(o.receiveTime+'T00:00:00').toLocaleDateString('vi-VN'):'—'}</td>
  <td class="note">${esc(o.note||'—')}</td>
@@ -571,7 +544,7 @@ function viewOrder(id){
    <div class="price-row"><span>Đơn vị</span><b>${esc(o.unit||'—')}</b></div>
    <div class="price-row"><span>Số điện thoại</span><b>${esc(o.phone)}</b></div>
    <div class="price-row"><span>Loại xe</span><b>${esc(o.vehicle)}</b></div>
-   <div class="price-row"><span>Màu xe</span><b>${esc(o.color||'—')}</b></div>
+   <div class="price-row"><span>Ghi chú màu xe</span><b>${esc(o.colorNote||'—')}</b></div>
    <div class="price-row"><span>Hình thức pin</span><b>${batteryLabelOf(o)}</b></div>
    <div class="price-row"><span>Số lượng xe</span><b>${vehQty(o)}</b></div>
    <div class="price-row"><span>Hình thức thanh toán</span><b>${o.payment==='installment'?'Trả góp':'Thanh toán hết'}</b></div>
@@ -600,11 +573,9 @@ async function deleteAllOrders(){
    toast('Đã xóa toàn bộ đơn hàng.');
  }
 }
-let editingColorImages={};
 function openVehicleModal(id=null){
  editingType='vehicle';editingId=id;
- const v=id?data.vehicles.find(x=>x.id===id):{name:'',priceBattery:0,priceNoBattery:0,refLink:'',color:[],image:'',images:{}};
- editingColorImages={...(v.images||{})};
+ const v=id?data.vehicles.find(x=>x.id===id):{name:'',priceBattery:0,priceNoBattery:0,refLink:'',image:''};
  document.getElementById('modalContent').innerHTML=`
  <h3>${id?'Chỉnh sửa':'Thêm'} loại xe</h3>
  <div class="field"><label>Tên / Loại xe *</label><input id="mName" value="${esc(v.name)}" placeholder="Ví dụ: Evo 200"></div>
@@ -612,43 +583,17 @@ function openVehicleModal(id=null){
  <div class="field" style="margin-top:12px"><label>Giá không kèm pin *</label><input id="mPriceNoBattery" type="number" value="${vehiclePriceOf(v,'nobattery')}" min="0" placeholder="Nhập giá xe không kèm pin"></div>
  <div class="field" style="margin-top:12px"><label>Link tham khảo</label><input id="mRefLink" value="${esc(v.refLink||'')}" placeholder="https://..."></div>
  <small style="display:block;color:var(--muted);margin-top:5px">Link này sẽ hiển thị phía dưới hình ảnh xe ở trang đăng ký.</small>
- <div class="field" style="margin-top:12px"><label>Màu xe *</label><input id="mColors" value="${esc((v.color||[]).join(', '))}" placeholder="Ví dụ: Trắng, Đen, Xanh" oninput="renderColorImageInputs()"></div>
- <small style="display:block;color:var(--muted);margin-top:5px">Nhập nhiều màu và cách nhau bằng dấu phẩy (,). Mỗi màu có thể gắn ảnh riêng ở bên dưới để khi khách chọn màu khác, ảnh xe cũng đổi theo.</small>
- <div class="field" style="margin-top:12px"><label>Hình ảnh mặc định (dùng khi màu chưa có ảnh riêng)</label>
+ <div class="field" style="margin-top:12px"><label>Hình ảnh xe</label>
    <input id="mImage" type="file" accept="image/*" onchange="previewUpload(this)">
    <div style="margin-top:8px">
      <img id="uploadPreview" class="preview-thumb" style="width:140px;height:100px;display:${v.image?'block':'none'}" src="${v.image||''}" alt="Ảnh xe">
    </div>
  </div>
- <div class="field" style="margin-top:12px"><label>Hình ảnh riêng theo từng màu</label>
-   <div id="colorImageInputs"></div>
- </div>
  <div class="actions">
    <button class="btn primary" onclick="saveVehicle()">Lưu thông tin</button>
    <button class="btn secondary" onclick="closeModal()">Hủy</button>
  </div>`;
- renderColorImageInputs();
  document.getElementById('modal').classList.remove('hidden');
-}
-function renderColorImageInputs(){
- const box=document.getElementById('colorImageInputs');if(!box)return;
- const colors=(document.getElementById('mColors')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
- box.innerHTML=colors.length?colors.map(c=>`
-   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-     <img class="preview-thumb" style="width:60px;height:44px;display:${editingColorImages[c]?'block':'none'}" src="${editingColorImages[c]||''}" data-color-preview="${esc(c)}" alt="${esc(c)}">
-     <div style="flex:1">
-       <div style="font-weight:700;font-size:13px;margin-bottom:4px">${esc(c)}</div>
-       <input type="file" accept="image/*" onchange="previewColorUpload(this,'${esc(c).replace(/'/g,"\\'")}')">
-     </div>
-   </div>`).join('') : '<small style="color:var(--muted)">Nhập màu xe ở trên để thêm ảnh riêng cho từng màu.</small>';
-}
-function previewColorUpload(input,color){
- const f=input.files[0];if(!f)return;
- readAndCompressImage(f).then(dataUrl=>{
-   editingColorImages[color]=dataUrl;
-   const img=document.querySelector(`img[data-color-preview="${CSS.escape(color)}"]`);
-   if(img){img.src=dataUrl;img.style.display='block'}
- }).catch(err=>{toast('Không xử lý được ảnh này, vui lòng thử ảnh khác.');console.error(err)});
 }
 function openAccessoryModal(id=null){editingType='accessory';editingId=id;const a=id?data.accessories.find(x=>x.id===id):{name:'',price:0};document.getElementById('modalContent').innerHTML=`<h3>${id?'Sửa':'Thêm'} phụ kiện</h3><div class="field"><label>Tên phụ kiện</label><input id="mName" value="${esc(a.name)}"></div><div class="field" style="margin-top:12px"><label>Giá</label><input id="mPrice" type="number" value="${a.price}"></div><div class="actions"><button class="btn primary" onclick="saveAccessory()">Lưu</button><button class="btn secondary" onclick="closeModal()">Hủy</button></div>`;document.getElementById('modal').classList.remove('hidden')}
 function previewUpload(input){
@@ -663,12 +608,10 @@ async function saveVehicle(){
  const priceBattery=Number(document.getElementById('mPriceBattery').value);
  const priceNoBattery=Number(document.getElementById('mPriceNoBattery').value);
  const refLink=document.getElementById('mRefLink').value.trim();
- const colors=document.getElementById('mColors').value.split(',').map(x=>x.trim()).filter(Boolean);
  const preview=document.getElementById('uploadPreview')?.src||'';
- const images={};colors.forEach(c=>{if(editingColorImages[c])images[c]=editingColorImages[c]});
 
- if(!name||priceBattery<=0||priceNoBattery<=0||!colors.length){
-   toast('Vui lòng nhập đầy đủ tên xe, giá kèm pin, giá không kèm pin và ít nhất 1 màu xe.');
+ if(!name||priceBattery<=0||priceNoBattery<=0){
+   toast('Vui lòng nhập đầy đủ tên xe, giá kèm pin và giá không kèm pin.');
    return;
  }
 
@@ -676,11 +619,11 @@ async function saveVehicle(){
    if(editingId){
      const v=data.vehicles.find(x=>x.id===editingId);
      if(!v)return;
-     const update={name,priceBattery,priceNoBattery,refLink,color:colors,images};
+     const update={name,priceBattery,priceNoBattery,refLink};
      if(preview.startsWith('data:')) update.image=preview;
      await updateDoc(doc(db,'vehicles',editingId), update);
    }else{
-     await addDoc(vehiclesCol,{name,priceBattery,priceNoBattery,refLink,color:colors,image:preview.startsWith('data:')?preview:'',images});
+     await addDoc(vehiclesCol,{name,priceBattery,priceNoBattery,refLink,image:preview.startsWith('data:')?preview:''});
    }
    closeModal();
    toast(editingId?'Đã cập nhật thông tin loại xe.':'Đã thêm loại xe mới.');
@@ -703,7 +646,7 @@ async function deleteVehicle(id){
  if(data.vehicles.length<=1){toast('Phải có ít nhất 1 loại xe.');return}
  const v=data.vehicles.find(x=>x.id===id);
  if(!v)return;
- if(confirm(`Bạn có chắc muốn xóa loại xe "${v.name}" cùng toàn bộ màu xe, giá tiền và hình ảnh đã cấu hình?`)){
+ if(confirm(`Bạn có chắc muốn xóa loại xe "${v.name}" cùng toàn bộ giá tiền và hình ảnh đã cấu hình?`)){
    await deleteDoc(doc(db,'vehicles',id));
    toast('Đã xóa loại xe.');
  }
@@ -719,7 +662,7 @@ Object.assign(window,{
  deleteOrder, deleteAllOrders, viewOrder, openVehicleModal, openAccessoryModal,
  previewUpload, saveVehicle, saveAccessory, editVehicle, editAccessory,
  deleteVehicle, deleteAccessory, closeModal, renderDashboard,
- onColorChange, toggleAccessoryQty, renderColorImageInputs, previewColorUpload,
+ toggleAccessoryQty,
  exportToExcel
 });
 </script>
