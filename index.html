@@ -567,16 +567,27 @@ async function deleteOrder(id){
  const o=data.orders.find(x=>x.id===id);
  if(!o)return;
  if(confirm(`Bạn có chắc muốn xóa đơn hàng của ${o.name} - ${o.vehicle}?`)){
-   await deleteDoc(doc(db,'orders',id));toast('Đã xóa đơn hàng.');
+   try{
+     await deleteDoc(doc(db,'orders',id));
+     toast('Đã xóa đơn hàng.');
+   }catch(e){
+     toast('Không thể xóa: '+(e?.message||'lỗi không xác định. Kiểm tra lại Firestore Rules.'));
+     console.error('deleteOrder error:',e);
+   }
  }
 }
 async function deleteAllOrders(){
  if(!data.orders.length){toast('Hiện chưa có đơn hàng để xóa.');return}
  if(confirm('Bạn có chắc chắn muốn xóa toàn bộ đơn hàng đã đặt? Hành động này không thể hoàn tác.')){
-   const batch=writeBatch(db);
-   data.orders.forEach(o=>batch.delete(doc(db,'orders',o.id)));
-   await batch.commit();
-   toast('Đã xóa toàn bộ đơn hàng.');
+   try{
+     const batch=writeBatch(db);
+     data.orders.forEach(o=>batch.delete(doc(db,'orders',o.id)));
+     await batch.commit();
+     toast('Đã xóa toàn bộ đơn hàng.');
+   }catch(e){
+     toast('Không thể xóa: '+(e?.message||'lỗi không xác định. Kiểm tra lại Firestore Rules.'));
+     console.error('deleteAllOrders error:',e);
+   }
  }
 }
 function openVehicleModal(id=null){
@@ -653,11 +664,25 @@ async function deleteVehicle(id){
  const v=data.vehicles.find(x=>x.id===id);
  if(!v)return;
  if(confirm(`Bạn có chắc muốn xóa loại xe "${v.name}" cùng toàn bộ giá tiền và hình ảnh đã cấu hình?`)){
-   await deleteDoc(doc(db,'vehicles',id));
-   toast('Đã xóa loại xe.');
+   try{
+     await deleteDoc(doc(db,'vehicles',id));
+     toast('Đã xóa loại xe.');
+   }catch(e){
+     toast('Không thể xóa: '+(e?.message||'lỗi không xác định. Kiểm tra lại Firestore Rules.'));
+     console.error('deleteVehicle error:',e);
+   }
  }
 }
-async function deleteAccessory(id){if(confirm('Xóa phụ kiện này?')){await deleteDoc(doc(db,'accessories',id));}}
+async function deleteAccessory(id){
+ if(!confirm('Xóa phụ kiện này?'))return;
+ try{
+   await deleteDoc(doc(db,'accessories',id));
+   toast('Đã xóa phụ kiện.');
+ }catch(e){
+   toast('Không thể xóa: '+(e?.message||'lỗi không xác định. Kiểm tra lại Firestore Rules.'));
+   console.error('deleteAccessory error:',e);
+ }
+}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('periodType').addEventListener('change',renderDashboard);
 
